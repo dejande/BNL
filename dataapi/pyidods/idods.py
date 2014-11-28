@@ -3566,7 +3566,7 @@ class idods(object):
             self.logger.info('Error when saving install rel property:\n%s (%d)' % (e.args[1], e.args[0]))
             raise MySQLError('Error when saving install rel property:\n%s (%d)' % (e.args[1], e.args[0]))
 
-    def updateInstallRelPropertyByMap(self, install_rel_parent, install_rel_child, install_rel_property_type_name, install_rel_property_value):
+    def updateInstallRelPropertyByMap(self, install_rel_parent, install_rel_child, install_rel_property_type_name, install_rel_property_value, install_rel_id=None):
         '''
         Update install relationship property
 
@@ -3582,6 +3582,9 @@ class idods(object):
         :param install_rel_property_value: value of the install relationship property
         :type install_rel_property_value: str
 
+        :param install_rel_id: id of the install_rel table
+        :type install_rel_id: int
+
         :return: True, if successful.
 
         :raises: ValueError, MySQLError
@@ -3591,16 +3594,21 @@ class idods(object):
         queryDict = {}
         whereDict = {}
 
-        # Check install rel
-        retrieveInstallRel = self.retrieveInstallRel(None, install_rel_parent, install_rel_child)
+        # Check if install_rel_id is empty
+        if install_rel_id is None:
 
-        if len(retrieveInstallRel) == 0:
-            raise ValueError("Install rel doesn't exist in the database!")
+            # Check install rel
+            retrieveInstallRel = self.retrieveInstallRel(None, install_rel_parent, install_rel_child)
+            if len(retrieveInstallRel) == 0:
+                raise ValueError("Install rel doesn't exist in the database!")
 
-        retrieveInstallRelKeys = retrieveInstallRel.keys()
-        retrieveInstallRelObject = retrieveInstallRel[retrieveInstallRelKeys[0]]
+            # Extracting id
+            retrieveInstallRelKeys = retrieveInstallRel.keys()
+            retrieveInstallRelObject = retrieveInstallRel[retrieveInstallRelKeys[0]]
 
-        whereDict['install_rel_id'] = retrieveInstallRelObject['id']
+            whereDict['install_rel_id'] = retrieveInstallRelObject['id']
+        else:
+            whereDict['install_rel_id'] = install_rel_id
 
         # Check install rel property type
         retrieveInstallRelPropertyType = self.retrieveInstallRelPropertyType(install_rel_property_type_name)
@@ -3638,12 +3646,15 @@ class idods(object):
             self.logger.info('Error when updating install rel property:\n%s (%d)' % (e.args[1], e.args[0]))
             raise MySQLError('Error when updating install rel property:\n%s (%d)' % (e.args[1], e.args[0]))
 
-    def deleteInstallRelProperty(self, install_rel_id):
+    def deleteInstallRelProperty(self, install_rel_id, install_rel_prop_type_name = None):
         '''
         Delete install relationship property
 
         :param install_rel_id: Id in the install relationship table
         :type install_rel_id: int
+
+        :param install_rel_prop_type_name: Name in the install_prop_type relationship table
+        :type install_rel_prop_type_name: int
 
         :return: True, if successful.
 
@@ -3651,9 +3662,25 @@ class idods(object):
             ValueError, MySQLError
         '''
 
-        # Generate SQL
-        sql = "DELETE FROM install_rel_prop WHERE install_rel_id = %s"
-        vals = [install_rel_id]
+        sql = ""
+        vals = []
+
+        if install_rel_prop_type_name != None:
+            installRelPropType = self.retrieveInstallRelPropertyType(install_rel_prop_type_name)
+
+            if len(installRelPropType) == 0:
+                raise ValueError("InstallRelPropType with name (%s) does not exist in the database!" % install_rel_prop_type_name)
+            
+            installRelPropTypeId = json.dumps(installRelPropType.keys()[0])
+
+            # Generate SQL
+            sql = "DELETE FROM install_rel_prop WHERE install_rel_id = %s AND install_rel_prop_type_id = %s"
+            vals = [install_rel_id, installRelPropTypeId]
+        else:
+
+            # Generate SQL
+            sql = "DELETE FROM install_rel_prop WHERE install_rel_id = %s"
+            vals = [install_rel_id]
 
         try:
             cur = self.conn.cursor()
@@ -3868,8 +3895,11 @@ class idods(object):
                 # Convert to json
                 if isinstance(props, (dict)) is False:
                     props = json.loads(props)
-
-                installRel = self.retrieveInstallRel(None, parent_install, child_install)
+                
+                if '__virtual_rel__' in props:
+                    installRel = self.retrieveInstallRel(None, parent_install, child_install, None, None, None, {'__virtual_rel__': "true"})
+                else:
+                    installRel = self.retrieveInstallRel(None, parent_install, child_install)             
 
                 if len(installRel) != 1:
                     raise ValueError("There should be one install rel with parent name (%s) and child name (%s) in the database!" % (parent_install, child_install))
@@ -3883,10 +3913,16 @@ class idods(object):
 
                     if key in relObj['prop_keys']:
 
+                        # Delete property
+                        if value == "":
+                            self.deleteInstallRelProperty(json.dumps(installRel.keys()[0]), key)
+                        
                         # Update property
-                        self.updateInstallRelPropertyByMap(parent_install, child_install, key, value)
+                        else:
+                            self.updateInstallRelPropertyByMap(parent_install, child_install, key, value, json.dumps(installRel.keys()[0]))
 
                     else:
+
                         # Save new property
                         self.saveInstallRelProperty(relObj['id'], key, value)
 
@@ -3997,7 +4033,7 @@ class idods(object):
         :param date: date of the device installation; accepts a range in a tuple
         :type date: str
 
-        :param prop: if we want to search for relationships with a specific property set to a specific value, we
+        :param expected_property: if we want to search for relationships with a specific property set to a specific value, we
               can prepare a dictionary and pass it to the function e.g. {'beamline': 'xh*'} will return all of the
               beamlines with names starting with xh or {'beamline': None} will return all of the beamlines.
         :type prop: dict
@@ -4047,6 +4083,9 @@ class idods(object):
             WHERE ir.child_install_id != ir.parent_install_id
             '''
         else:
+            # Convert to json
+            if isinstance(expected_property, (dict)) is False:
+                expected_property = json.loads(expected_property)
 
             # Check expected property parameter
             if len(expected_property.keys()) > 1:
@@ -4582,7 +4621,7 @@ class idods(object):
 
             .. code-block:: python
 
-                {'id': new install id}
+                {'id': new install id, 'rel_id': new virtual rel id}
 
         :raises: ValueError, Exception
         '''
@@ -4610,7 +4649,7 @@ class idods(object):
         key = componentType[componentTypeKeys[0]]['id']
         invid = self.physics.saveInstall(name, description, key, coordinatecenter)
 
-        # Save install rel so properties can be saved fot install
+        # Save install rel so properties can be saved for install
         mapid = self.physics.saveInstallRel(invid, invid)
         self.saveInstallRelProperty(mapid, '__virtual_rel__', 'true')
 

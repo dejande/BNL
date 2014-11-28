@@ -1234,7 +1234,6 @@ app.controller('showInstallCtrl', function($scope, $routeParams, $http, $window,
 	$scope.alert = {};
 	$scope.alert.show = false;
 	$scope.info = InstallInfo;
-	l($scope.new);
 
 	$scope.types = [];
 	$scope.onlinedata = [];
@@ -1256,7 +1255,15 @@ app.controller('showInstallCtrl', function($scope, $routeParams, $http, $window,
 		installFactory.retrieveItem($routeParams).then(function(inst_result) {
 			$scope.element = inst_result;
 			$scope.element.old_name = inst_result.name;
+			l("InstallFactory retrieve: ");
 			l(inst_result);
+
+			// If a device does not have a node_type set, make it a Real type
+			// This is necessary due to old devices that do not have __node_type_ set yet
+			if ($scope.element.__node_type__ == "") {
+
+				$scope.element.__node_type__ = $scope.nodeTypeList[2].name;
+			}
 
 			if ($routeParams.action == "retrieve") {
 				$scope.map = {};
@@ -1301,7 +1308,8 @@ app.controller('showInstallCtrl', function($scope, $routeParams, $http, $window,
 
 		} else {
 			obj.cmpnt_type_name = "__virtual_device__";
-			obj.device_category = "";
+			obj.__beamline__ = "";
+			obj.__project__ = "";
 		}
 	};
 
@@ -1344,6 +1352,54 @@ app.controller('showInstallCtrl', function($scope, $routeParams, $http, $window,
 		$window.location = location;
 	};
 
+	// Save or update installRel
+	$scope.saveOrUpdateInstallRel = function(element) {
+
+		// Setting installRel
+		var installRel = new InstallRel({
+			"parent_install": element.name,
+			"child_install": element.name,
+			"expected_property": JSON.stringify({"__virtual_rel__": "true"})
+		});
+
+		// Retrieving installRel
+		var installRelPromise = installRelFactory.retrieveItems(installRel);
+
+		// Retrieving installRel, so we can save a new installRelProp if it yet doesn't exist
+		installRelPromise.then(function(data) {
+			l("Retrieved InstallRel: ");
+			l(data);
+
+			// Setting installRel
+			installRel = new InstallRel({
+				"parent_install": element.name,
+				"child_install": element.name,
+				"description": "virtual_description",
+				"props": JSON.stringify({"__virtual_rel__": "true", "__node_type__": element.__node_type__, "__beamline__": element.__beamline__, "__project__": element.__project__})
+			});
+
+			// If this install does not have an installRel yet, save it
+			if (isArrayEmpty(data)) {
+
+				// Saving a new InstallRel
+				var newInstallRelPromise = installRelFactory.saveItem(installRel);
+				
+
+			// Otherwise update it
+			} else {
+
+				// Updating a new InstallRel
+				var newInstallRelPromise = installRelFactory.updateItem(installRel);
+			}	
+
+			newInstallRelPromise.then(function(newInstallRel) {
+
+				l("Saved/Updated installRel: ");
+				l(newInstallRel);
+			});
+		});
+	}
+
 	$scope.saveItem = function(newItem, action) {
 		$scope.alert.show = false;
 		var item = new Install(newItem);
@@ -1362,7 +1418,7 @@ app.controller('showInstallCtrl', function($scope, $routeParams, $http, $window,
 			if(action === "update") {
 				promise = installFactory.updateItem($scope.element);
 
-			} else if(action == "save") {
+			} else if(action === "save") {
 				promise = installFactory.saveItem($scope.new);
 			}
 
@@ -1373,33 +1429,16 @@ app.controller('showInstallCtrl', function($scope, $routeParams, $http, $window,
 				$scope.alert.body = "Install item successfully saved!";
 				l(data);
 
-				var nodeType = new InstallRelProp({
-					"install_rel_id": data.rel_id,
-					"install_rel_property_type_name": "__node_type__",
-					"install_rel_property_value": $scope.new.node_type
-				});
-				relPromise = installRelPropFactory.saveItem(nodeType);
+				// Performs only on update action
+				if (action === 'update') {
 
-				// var deviceCategory = new InstallRelProp({
-				// 	"install_rel_id": data.rel_id,
-				// 	"install_rel_property_type_name": "__device_category__",
-				// 	"install_rel_property_value": $scope.new.device_category
-				// });
-				// relPromise = installRelPropFactory.saveItem(deviceCategory);
+					$scope.saveOrUpdateInstallRel($scope.element);
 
-				var idProject = new InstallRelProp({
-					"install_rel_id": data.rel_id,
-					"install_rel_property_type_name": "__project__",
-					"install_rel_property_value": $scope.new.project
-				});
-				relPromise = installRelPropFactory.saveItem(idProject);
+				// Performs only on save action
+				} else if(action === "save") {
 
-				var idBeamline = new InstallRelProp({
-					"install_rel_id": data.rel_id,
-					"install_rel_property_type_name": "__beamline__",
-					"install_rel_property_value": $scope.new.beamline
-				});
-				relPromise = installRelPropFactory.saveItem(idBeamline);
+					$scope.saveOrUpdateInstallRel($scope.new);
+				}
 
 			}, function(error) {
 				$scope.alert.show = true;

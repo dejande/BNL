@@ -741,6 +741,49 @@ class TestIdods(unittest.TestCase):
         self.assertEqual(updatedPropObject['value'], '5')
 
     '''
+    Test updating install relationship property by map
+    '''
+    def testUpdateInstallRelPropertyByMap(self):
+
+        # Prepare component type
+        savedComponentType = self.api.saveComponentType('Magnet')
+
+        # Save install
+        savedInstall = self.api.saveInstall('test device', cmpnt_type_name='Magnet', description='desc', coordinatecenter=2.2)
+
+        # Extract id
+        virtualRelId = json.dumps(savedInstall["rel_id"])
+
+        # Update a virtual relationship
+        self.assertRaises(ValueError, self.api.updateInstallRelPropertyByMap, 'test device', 'test device', '__virtual_rel__', 'false')
+        self.assertTrue(self.api.updateInstallRelPropertyByMap('test device', 'test device', '__virtual_rel__', 'true', install_rel_id=virtualRelId))
+
+    '''
+    Test deleting install relationship property
+    '''
+    def testDeleteInstallRelProperty(self):
+
+        # Prepare component type
+        savedComponentType = self.api.saveComponentType('Magnet')
+
+        # Save install
+        savedInstall1 = self.api.saveInstall('test device1', cmpnt_type_name='Magnet', description='desc', coordinatecenter=2.2)
+        savedInstall2 = self.api.saveInstall('test device12', cmpnt_type_name='Magnet', description='desc', coordinatecenter=2.2)
+
+        # Extract id
+        virtualRelId1 = json.dumps(savedInstall1["rel_id"])
+        virtualRelId2 = json.dumps(savedInstall2["rel_id"])
+
+        # Delete an InstalRelProp
+        self.assertTrue(self.api.deleteInstallRelProperty(virtualRelId1))
+        self.assertTrue(self.api.deleteInstallRelProperty(virtualRelId2, '__virtual_rel__'))
+
+        self.assertTrue(self.api.deleteInstallRelProperty(virtualRelId1))
+        self.assertTrue(self.api.deleteInstallRelProperty(virtualRelId2, '__virtual_rel__'))
+        
+        self.assertRaises(ValueError, self.api.deleteInstallRelProperty, virtualRelId2, '__something__')
+
+    '''
     Test saving install relationship
     '''
     def testSaveInstallRel(self):
@@ -800,6 +843,7 @@ class TestIdods(unittest.TestCase):
         # Save rel
         rel = self.api.saveInstallRel('test parent', 'test child', 'desc', 1, {'testprop': 'testvalue'})
 
+        # Update rel
         self.assertTrue(self.api.updateInstallRel('test parent', 'test child', description='descupd', order=2, props={'testprop': 'value'}))
 
         # Retrieve rel
@@ -821,6 +865,28 @@ class TestIdods(unittest.TestCase):
 
         # Test saving install rel with property that is not defined
         self.assertRaises(ValueError, self.api.saveInstallRel, 'test child', 'test parent', None, None, {'testprop2': 'testvalue'})
+
+    '''
+    Test retrieving install relationship
+    '''
+    def testRetrieveInstallRel(self):
+
+        # Save component type
+        savedComponentType = self.api.saveComponentType('__virtual_device__')
+
+        # Save install
+        savedInstall = self.api.saveInstall('virtual device', cmpnt_type_name='__virtual_device__', description='desc', coordinatecenter=2.2)
+    
+        virtualRel = json.dumps(savedInstall["rel_id"])
+
+        # Retrieve rel
+        retrievedVirtualRel = self.api.retrieveInstallRel(virtualRel, expected_property={"__virtual_rel__": None})
+        retrievedVirtualRelEmpty = self.api.retrieveInstallRel(virtualRel)
+
+        # Check description
+        self.assertTrue(json.dumps(retrievedVirtualRel))
+        self.assertTrue(json.dumps(retrievedVirtualRelEmpty), '{}')
+        self.assertEqual(json.dumps(retrievedVirtualRelEmpty), '{}')
 
     '''
     Test saving, retrieving and updating inventory to install map

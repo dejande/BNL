@@ -549,10 +549,10 @@ function createCsvString(data, selection, factor) {
 }
 
 /**
- * Checks if a JSON array is empty
- * @param {type} JSON array
+ * Checks if a JSON map is empty
+ * @param {type} JSON map
  * @returns {boolean}
  */
-function isArrayEmpty(array) {
-		return Object.keys(array).length == 0;
-	}
+function isArrayEmpty(map) {
+	return Object.keys(map).length == 0;
+}

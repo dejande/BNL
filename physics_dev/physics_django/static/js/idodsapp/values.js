@@ -564,7 +564,7 @@ app.value('InstallRelInfo', {
  	this.retrieve = ["id", "parentname", "childname", "description", "order", "date"];
 
  	// Parameters that are checked before saving or updating
- 	this.list = ["parent_install", "child_install", "description", "order"];
+ 	this.list = ["parent_install", "child_install", "description", "order", "expected_property"];
 
  	// Parameters used for save URL
  	this.save = ["parent_install", "child_install", "description", "order", "props"];
@@ -597,6 +597,7 @@ app.value('InstallRelInfo', {
  	this.parent_install = "";
  	this.child_install = "";
 
+ 	this.expected_property = {};
  	this.props = {};
  	this.prop_keys = [];
 
@@ -638,6 +639,7 @@ app.value('InstallRelInfo', {
  		this.parentname = obj.parentname;
  		this.parent_install = obj.parent_install;
  		this.child_install = obj.child_install;
+ 		this.expected_property = obj.expected_property;
  	};
 
  	if(obj !== undefined) {
@@ -813,7 +815,7 @@ app.value('InstallInfo', {
  	this.save = ["name", "cmpnt_type_name", "description", "coordinatecenter"];
 
  	// Parameters that are displayed when saving new item
- 	this.save_show = ["node_type", "name", "cmpnt_type_name", "description", "coordinatecenter", "beamline", "project"];
+ 	this.save_show = ["__node_type__", "name", "cmpnt_type_name", "description", "coordinatecenter", "__beamline__", "__project__"];
 
  	// Parameters used as update URL parameters
  	this.update = ["old_name", "name", "cmpnt_type_name", "description", "coordinatecenter"];
@@ -824,9 +826,9 @@ app.value('InstallInfo', {
  		"cmpnt_type_name": "Component type",
  		"description": "Description",
  		"coordinatecenter": "Coordinate center",
- 		"node_type": "Node type",
- 		"beamline": "Beamline name",
- 		"project": "Project name"
+ 		"__node_type__": "Node type",
+ 		"__beamline__": "Beamline name",
+ 		"__project__": "Project name"
  	};
 
  	this.id = "";
@@ -836,9 +838,9 @@ app.value('InstallInfo', {
  	this.coordinatecenter = undefined;
 
  	// Properties
- 	this.node_type = "";
- 	this.beamline = "";
- 	this.project = "";
+ 	this.__node_type__ = "";
+ 	this.__beamline__ = "";
+ 	this.__project__ = "";
 
  	this.props = {};
  	this.prop_keys = [];
@@ -1321,7 +1323,7 @@ app.value('OfflineDataInstallInfo', {
  		"script": "Script file content",
  		"status": "Data status"
  	};
- 	
+
  	this.id = "";
  	this.install_name = "";
  	this.inventory_id = "";
