@@ -1237,6 +1237,7 @@ app.controller('showInstallCtrl', function($scope, $routeParams, $http, $window,
 
 	$scope.types = [];
 	$scope.inventories = [];
+	$scope.inventory_id = undefined;
 	$scope.onlinedata = [];
 	$scope.offlinedata = [];
 	$scope.statusMap = statusArrMap;
@@ -1255,7 +1256,6 @@ app.controller('showInstallCtrl', function($scope, $routeParams, $http, $window,
 		// Retrieve all inventories
 		inventoryFactory.retrieveItems({"not_installed": true}).then(function(result) {
 			$.each(result, function(i, item){
-				item["seq_num"] = $scope.inventories.length + 1;
 				$scope.inventories.push(item);
 			});
 		});
@@ -1282,8 +1282,7 @@ app.controller('showInstallCtrl', function($scope, $routeParams, $http, $window,
 					inventoryFactory.retrieveItems({"name": data[Object.keys(data)[0]].inventory_name}).then(function(inv) {
 						
 						var thisInv = inv[Object.keys(inv)[0]];
-
-						thisInv["seq_num"] = $scope.inventories.length + 1;
+						$scope.element.inventory = thisInv;
 						$scope.inventories.push(thisInv);
 					});
 				}
@@ -1306,34 +1305,6 @@ app.controller('showInstallCtrl', function($scope, $routeParams, $http, $window,
 			l(inst_result);
 
 			if ($routeParams.action == "update") {
-
-				// Setting inventoryToInstall
-				var i2i = new InventoryToInstall({
-					"inventory_to_install": undefined,
-					"install_name": inst_result.name,
-					"inventory_id": undefined
-				});
-
-				// Making a promise
-				var i2iPromise = inventoryToInstallFactory.retrieveItems(i2i);
-
-				// Retrieving InventoryToInstall that belongs to current install
-				i2iPromise.then(function(data) {
-					
-					if (!isArrayEmpty(data)) {
-						l("Retrieved InventoryToInstall: ");
-						l(data[Object.keys(data)[0]].inventory_name);
-
-						inventoryFactory.retrieveItems({"name": data[Object.keys(data)[0]].inventory_name}).then(function(inv) {
-							l("Retrieved inventory: ");
-							l(inv);
-
-							var pos = $scope.inventories.length;
-							$scope.changeNodeTypeInventory(pos, $scope.element);
-							$scope.element.inventory = pos;
-						});
-					}
-				});
 
 				// If a device does not have a node_type set, make it a Real type
 				// This is necessary due to old devices that do not have __node_type_ set yet
@@ -1394,25 +1365,16 @@ app.controller('showInstallCtrl', function($scope, $routeParams, $http, $window,
 
 	$scope.changeNodeTypeInventory = function(currentValue, obj) {
 
-		// String to int conversion
-		var converted = Number(currentValue);
-
-		// Conversion successful
-		if (converted != NaN && converted > 0) {
-			obj.cmpnt_type_name = $scope.inventories[converted - 1].cmpnt_type_name;
+		if (obj.inventory != undefined) {
+			obj.cmpnt_type_name = obj.inventory.cmpnt_type_name;
 			obj.__node_type__ = $scope.nodeTypeList[2].name;
 		}
 	};
 
 	$scope.checkInventoryValidity = function(obj) {
 
-		// String to int conversion
-		var converted = Number(obj.inventory);
-
-		// Conversion successful
-		if (converted > 0 && obj.cmpnt_type_name != $scope.inventories[converted - 1].cmpnt_type_name) {
-			
-			obj.inventory = "";
+		if (obj.inventory != undefined && obj.cmpnt_type_name != obj.inventory.cmpnt_type_name) {
+			obj.inventory = undefined;
 		}
 	};
 
@@ -1525,13 +1487,13 @@ app.controller('showInstallCtrl', function($scope, $routeParams, $http, $window,
 			if (isArrayEmpty(data)) {
 
 				// If inventory selected, save it, otherwise do nothing
-				if (element.inventory > 0) {
+				if (element.inventory != undefined) {
 
 					// Prepare new i2i
 					var newi2i = new InventoryToInstall({
 						"inventory_to_install": undefined,
 						"install_name": element.name,
-						"inventory_id": $scope.inventories[element.inventory - 1].id
+						"inventory_id": element.inventory.id
 					});
 
 					// Saving a new InventoryToInstall
@@ -1542,10 +1504,10 @@ app.controller('showInstallCtrl', function($scope, $routeParams, $http, $window,
 			} else {
 
 				//  If we have a selected inventory, first delete old one and install a new one
-				if (element.inventory > 0) {
+				if (element.inventory != undefined) {
 
 					// If chosen inventory is different than the current saved one
-					if ($scope.inventories[element.inventory - 1].id != data[Object.keys(data)[0]].inventory_id) {
+					if (element.inventory != data[Object.keys(data)[0]].inventory_id) {
 
 						// First delete old i2i
 						inventoryToInstallFactory.deleteItem({"inventory_to_install_id": Object.keys(data)[0]}).then(function(resDeleted){
@@ -1556,7 +1518,7 @@ app.controller('showInstallCtrl', function($scope, $routeParams, $http, $window,
 							var newi2i = new InventoryToInstall({
 								"inventory_to_install": undefined,
 								"install_name": element.name,
-								"inventory_id": $scope.inventories[element.inventory - 1].id
+								"inventory_id": element.inventory.id
 							});
 
 							// Save new i2i

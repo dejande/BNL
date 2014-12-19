@@ -223,10 +223,9 @@
 				<td>
 					<span class="control-group" ng-class="{'error': error[property]}">
 						<span class="controls">
-							<select title="Inventories" ng-disabled="new.__node_type__ != 'real'" ng-change="changeNodeTypeInventory(new.inventory, new)" ng-model="new.inventory" type="text" >
-								<option value="{{inv.seq_num}}" ng-repeat="inv in inventories">{{formatInventory(inv)}}</option>
+							<select title="Inventories" ng-disabled="new.__node_type__ != 'real'" ng-change="changeNodeTypeInventory(new.inventory, new)" ng-model="new.inventory" type="text" ng-options="in as formatInventory(in) for (key, in) in inventories">
 							</select>
-							<i ng-show="new.__node_type__ == 'real'" ng-click="new.inventory = 0" class="icon-remove" style="cursor:pointer;"></i>	
+							<i ng-show="new.__node_type__ == 'real'" ng-click="new.inventory = undefined" class="icon-remove" style="cursor:pointer;"/>	
 						</span>
 					</span>
 				</td>
@@ -279,11 +278,10 @@
 				<td>Inventory</td>
 				<td>
 					<span class="control-group" ng-class="{'error': error[property]}">
-						<span class="controls">
-							<select title="Inventories" ng-disabled="element.__node_type__ != 'real'" ng-change="changeNodeTypeInventory(element.inventory, element)" ng-model="element.inventory" type="text" >
-								<option value="{{inv.seq_num}}" ng-repeat="inv in inventories">{{formatInventory(inv)}}</option>
+						<span class="controls">		
+							<select title="Inventories" ng-disabled="element.__node_type__ != 'real'" ng-change="changeNodeTypeInventory(element.inventory, element)" ng-model="element.inventory" type="text" ng-options="in as formatInventory(in) for (key, in) in inventories">
 							</select>
-							<i ng-show="element.__node_type__ == 'real'" ng-click="element.inventory = 0" class="icon-remove" style="cursor:pointer;"></i>							
+							<i ng-show="element.__node_type__ == 'real'" ng-click="element.inventory = undefined" class="icon-remove" style="cursor:pointer;"/>		
 						</span>
 					</span>
 				</td>
