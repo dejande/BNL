@@ -909,6 +909,11 @@ class TestIdods(unittest.TestCase):
         # Map install to inventory
         map = self.api.saveInventoryToInstall('test parent', idObject['id'])
 
+        # Retrieve inventory test, only return not installed inventories
+        self.assertTrue(len(self.api.retrieveInventory(not_installed=True)) == 1);
+        self.assertTrue(len(self.api.retrieveInventory(not_installed=False)) == 2);
+        self.assertTrue(len(self.api.retrieveInventory(not_installed=None)) == 2);
+
         # Retrieve saved map
         retrieveMap = self.api.retrieveInventoryToInstall(None, 'test parent', idObject['id'])
         retrieveMapKeys = retrieveMap.keys()

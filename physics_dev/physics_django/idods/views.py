@@ -217,7 +217,7 @@ def retrieveInventoryWS(request):
     '''
     Retrieve inventory
     '''
-    return _retrieveData(request, idodsi.retrieveInventory, ['serial_no', 'cmpnt_type_name', 'vendor_name', 'name'])
+    return _retrieveData(request, idodsi.retrieveInventory, ['serial_no', 'cmpnt_type_name', 'vendor_name', 'name', 'not_installed'])
 
 
 @require_http_methods(["GET"])

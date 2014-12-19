@@ -300,7 +300,7 @@ app.value('InventoryInfo', {
  	this.retrieve_hide = ["name", "alias"];
 
  	// Parameters that are checked before saving or updating
- 	this.list = ["name", "cmpnt_type_name", "vendor_name", "alias", "serial_no"];
+ 	this.list = ["name", "cmpnt_type_name", "vendor_name", "alias", "serial_no", "not_installed"];
 
  	// Parameters used for save URL
  	this.save = ["name", "cmpnt_type_name", "vendor_name", "alias", "serial_no", "props"];
@@ -329,6 +329,7 @@ app.value('InventoryInfo', {
  	this.vendor_name = undefined;
  	this.alias = "";
  	this.serial_no = "";
+ 	this.not_installed = undefined;
 
  	this.__device_category__ = "";
  	this.__measurement_data_settings__ = undefined;

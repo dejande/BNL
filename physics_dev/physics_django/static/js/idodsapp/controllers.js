@@ -1236,6 +1236,7 @@ app.controller('showInstallCtrl', function($scope, $routeParams, $http, $window,
 	$scope.info = InstallInfo;
 
 	$scope.types = [];
+	$scope.inventories = [];
 	$scope.onlinedata = [];
 	$scope.offlinedata = [];
 	$scope.statusMap = statusArrMap;
@@ -1249,6 +1250,52 @@ app.controller('showInstallCtrl', function($scope, $routeParams, $http, $window,
 		});
 	});
 
+	$scope.loadInventories = function() {
+
+		// Retrieve all inventories
+		inventoryFactory.retrieveItems({"not_installed": true}).then(function(result) {
+			$.each(result, function(i, item){
+				item["seq_num"] = $scope.inventories.length + 1;
+				$scope.inventories.push(item);
+			});
+		});
+	};
+
+	// If updating, first retrieve an inventory that belongs to current install, then the others
+	if ($routeParams.action == "update") {
+		installFactory.retrieveItem($routeParams).then(function(inst_result) {
+
+			// Setting inventoryToInstall
+			var i2i = new InventoryToInstall({
+				"inventory_to_install": undefined,
+				"install_name": inst_result.name,
+				"inventory_id": undefined
+			});
+
+			// Making a promise
+			var i2iPromise = inventoryToInstallFactory.retrieveItems(i2i);
+
+			i2iPromise.then(function(data) {
+
+				// If results are not empty
+				if (!isArrayEmpty(data)) {
+					inventoryFactory.retrieveItems({"name": data[Object.keys(data)[0]].inventory_name}).then(function(inv) {
+						
+						var thisInv = inv[Object.keys(inv)[0]];
+
+						thisInv["seq_num"] = $scope.inventories.length + 1;
+						$scope.inventories.push(thisInv);
+					});
+				}
+			});
+		});
+		$scope.loadInventories();
+
+	// Retrieve all available inventories, that can be installed
+	} else {
+		$scope.loadInventories();
+	}
+
 	// Get inventory from the factory if updating
 	if($routeParams.action != "save") {
 
@@ -1258,11 +1305,42 @@ app.controller('showInstallCtrl', function($scope, $routeParams, $http, $window,
 			l("InstallFactory retrieve: ");
 			l(inst_result);
 
-			// If a device does not have a node_type set, make it a Real type
-			// This is necessary due to old devices that do not have __node_type_ set yet
-			if ($scope.element.__node_type__ == "") {
+			if ($routeParams.action == "update") {
 
-				$scope.element.__node_type__ = $scope.nodeTypeList[2].name;
+				// Setting inventoryToInstall
+				var i2i = new InventoryToInstall({
+					"inventory_to_install": undefined,
+					"install_name": inst_result.name,
+					"inventory_id": undefined
+				});
+
+				// Making a promise
+				var i2iPromise = inventoryToInstallFactory.retrieveItems(i2i);
+
+				// Retrieving InventoryToInstall that belongs to current install
+				i2iPromise.then(function(data) {
+					
+					if (!isArrayEmpty(data)) {
+						l("Retrieved InventoryToInstall: ");
+						l(data[Object.keys(data)[0]].inventory_name);
+
+						inventoryFactory.retrieveItems({"name": data[Object.keys(data)[0]].inventory_name}).then(function(inv) {
+							l("Retrieved inventory: ");
+							l(inv);
+
+							var pos = $scope.inventories.length;
+							$scope.changeNodeTypeInventory(pos, $scope.element);
+							$scope.element.inventory = pos;
+						});
+					}
+				});
+
+				// If a device does not have a node_type set, make it a Real type
+				// This is necessary due to old devices that do not have __node_type_ set yet
+				if ($scope.element.__node_type__ == "") {
+
+					$scope.element.__node_type__ = $scope.nodeTypeList[2].name;
+				}
 			}
 
 			if ($routeParams.action == "retrieve") {
@@ -1310,6 +1388,31 @@ app.controller('showInstallCtrl', function($scope, $routeParams, $http, $window,
 			obj.cmpnt_type_name = "__virtual_device__";
 			obj.__beamline__ = "";
 			obj.__project__ = "";
+			obj.inventory = "";
+		}
+	};
+
+	$scope.changeNodeTypeInventory = function(currentValue, obj) {
+
+		// String to int conversion
+		var converted = Number(currentValue);
+
+		// Conversion successful
+		if (converted != NaN && converted > 0) {
+			obj.cmpnt_type_name = $scope.inventories[converted - 1].cmpnt_type_name;
+			obj.__node_type__ = $scope.nodeTypeList[2].name;
+		}
+	};
+
+	$scope.checkInventoryValidity = function(obj) {
+
+		// String to int conversion
+		var converted = Number(obj.inventory);
+
+		// Conversion successful
+		if (converted > 0 && obj.cmpnt_type_name != $scope.inventories[converted - 1].cmpnt_type_name) {
+			
+			obj.inventory = "";
 		}
 	};
 
@@ -1400,6 +1503,102 @@ app.controller('showInstallCtrl', function($scope, $routeParams, $http, $window,
 		});
 	}
 
+	// Save or update InventoryToInstall
+	$scope.saveOrUpdateInventoryToInstall = function(element) {
+
+		// Setting InventoryToInstall
+		var i2i = new InventoryToInstall({
+			"inventory_to_install": undefined,
+			"install_name": element.name,
+			"inventory_id": undefined//$scope.inventories[element.inventory].id
+		});
+
+		// Making a promise
+		var i2iPromise = inventoryToInstallFactory.retrieveItems(i2i);
+
+		// Retrieving InventoryToInstall, so we can save/update a InventoryToInstall
+		i2iPromise.then(function(data) {
+			l("Retrieved InventoryToInstall: ");
+			l(data);
+
+			// If InventoryToInstall does not exist for this inventory, save it
+			if (isArrayEmpty(data)) {
+
+				// If inventory selected, save it, otherwise do nothing
+				if (element.inventory > 0) {
+
+					// Prepare new i2i
+					var newi2i = new InventoryToInstall({
+						"inventory_to_install": undefined,
+						"install_name": element.name,
+						"inventory_id": $scope.inventories[element.inventory - 1].id
+					});
+
+					// Saving a new InventoryToInstall
+					$scope.saveInventoryToInstall(inventoryToInstallFactory.saveItem(newi2i));
+				}
+
+			// Otherwise delete old one and/or save a new one
+			} else {
+
+				//  If we have a selected inventory, first delete old one and install a new one
+				if (element.inventory > 0) {
+
+					// If chosen inventory is different than the current saved one
+					if ($scope.inventories[element.inventory - 1].id != data[Object.keys(data)[0]].inventory_id) {
+
+						// First delete old i2i
+						inventoryToInstallFactory.deleteItem({"inventory_to_install_id": Object.keys(data)[0]}).then(function(resDeleted){
+							l("Deleted InventoryToInstall: ");
+							l(resDeleted);
+
+							// Prepare new i2i
+							var newi2i = new InventoryToInstall({
+								"inventory_to_install": undefined,
+								"install_name": element.name,
+								"inventory_id": $scope.inventories[element.inventory - 1].id
+							});
+
+							// Save new i2i
+							$scope.saveInventoryToInstall(inventoryToInstallFactory.saveItem(newi2i));
+						});
+					}
+				} else {
+					
+					// Delete current i2i
+					inventoryToInstallFactory.deleteItem({"inventory_to_install_id": Object.keys(data)[0]}).then(function(resDeleted){
+						l("Deleted InventoryToInstall: ");
+						l(resDeleted);
+					});
+				}
+			}
+		});
+	}
+
+	$scope.formatInventory = function(inv) {
+		return inv.id + " ( " + inv.cmpnt_type_name + ", " + inv.vendor + " )";
+	};
+
+	$scope.saveInventoryToInstall = function(promise) {
+		promise.then(function(newInventoryToInstall) {
+				l("Saved/Updated InventoryToInstall: ");
+				l(newInventoryToInstall);
+
+			}, function(error) {
+				$scope.alert.show = true;
+				$scope.alert.success = false;
+				$scope.alert.title = "Error!";
+				$scope.alert.body = error;
+			});
+	};
+
+	$scope.deleteInventoryToInstall = function(promise) {
+		promise.then(function(newInventoryToInstall) {
+			l("Deleted InventoryToInstall: ");
+			l(resDeleted);
+		});
+	};
+
 	$scope.saveItem = function(newItem, action) {
 		$scope.alert.show = false;
 		var item = new Install(newItem);
@@ -1431,13 +1630,13 @@ app.controller('showInstallCtrl', function($scope, $routeParams, $http, $window,
 
 				// Performs only on update action
 				if (action === 'update') {
-
 					$scope.saveOrUpdateInstallRel($scope.element);
+					$scope.saveOrUpdateInventoryToInstall($scope.element);
 
 				// Performs only on save action
 				} else if(action === "save") {
-
 					$scope.saveOrUpdateInstallRel($scope.new);
+					$scope.saveOrUpdateInventoryToInstall($scope.new);
 				}
 
 			}, function(error) {

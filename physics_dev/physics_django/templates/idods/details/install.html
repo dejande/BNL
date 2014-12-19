@@ -204,8 +204,8 @@
 				<td>
 					<span class="control-group" ng-class="{'error': error[property]}">
 						<span class="controls">
-
-							<select title="Available only for real devices" ng-disabled="new.__node_type__ != 'real'" ng-if="property == 'cmpnt_type_name'" ng-model="new[property]" ng-options="type for type in types"></select>
+							
+							<select ng-change="checkInventoryValidity(new)" title="Available only for real devices" ng-disabled="new.__node_type__ != 'real'" ng-if="property == 'cmpnt_type_name'" ng-model="new[property]" ng-options="type for type in types"></select>
 
 							<input ng-if="property != 'cmpnt_type_name' && property != '__node_type__' && property != '__beamline__' && property != '__project__'" type="text" ng-model="new[property]" />
 
@@ -214,6 +214,19 @@
 							<select ng-change="changeNodeType(new[property], new)" ng-if="property == '__node_type__'" ng-model="new[property]" ng-options="s.name as s.value for s in nodeTypeList"></select>
 
 							<span class="help-inline">{{error[property]}}</span>
+						</span>
+					</span>
+				</td>
+			</tr>
+			<tr>
+				<td>Inventory</td>
+				<td>
+					<span class="control-group" ng-class="{'error': error[property]}">
+						<span class="controls">
+							<select title="Inventories" ng-disabled="new.__node_type__ != 'real'" ng-change="changeNodeTypeInventory(new.inventory, new)" ng-model="new.inventory" type="text" >
+								<option value="{{inv.seq_num}}" ng-repeat="inv in inventories">{{formatInventory(inv)}}</option>
+							</select>
+							<i ng-show="new.__node_type__ == 'real'" ng-click="new.inventory = 0" class="icon-remove" style="cursor:pointer;"></i>	
 						</span>
 					</span>
 				</td>
@@ -249,7 +262,7 @@
 					<span class="control-group" ng-class="{'error': error[property]}">
 						<span class="controls">
 	
-							<select title="Available only for real devices"  ng-if="property == 'cmpnt_type_name'" ng-model="element[property]" ng-disabled="element.__node_type__ != 'real'" ng-options="type for type in types" type="text"></select>
+							<select ng-change="checkInventoryValidity(element)" title="Available only for real devices"  ng-if="property == 'cmpnt_type_name'" ng-model="element[property]" ng-disabled="element.__node_type__ != 'real'" ng-options="type for type in types" type="text"></select>
 
 							<input title="Available only for insertion devices" ng-disabled="element.__node_type__ != 'real'" ng-if="property == '__beamline__' || property == '__project__'" type="text" ng-model="element[property]" />
 
@@ -258,6 +271,19 @@
 							<select ng-change="changeNodeType(element[property], element)" ng-if="property == '__node_type__'" ng-model="element[property]" ng-options="s.name as s.value for s in nodeTypeList"></select>
 
 							<span class="help-inline">{{error[property]}}</span>
+						</span>
+					</span>
+				</td>
+			</tr>
+			<tr>
+				<td>Inventory</td>
+				<td>
+					<span class="control-group" ng-class="{'error': error[property]}">
+						<span class="controls">
+							<select title="Inventories" ng-disabled="element.__node_type__ != 'real'" ng-change="changeNodeTypeInventory(element.inventory, element)" ng-model="element.inventory" type="text" >
+								<option value="{{inv.seq_num}}" ng-repeat="inv in inventories">{{formatInventory(inv)}}</option>
+							</select>
+							<i ng-show="element.__node_type__ == 'real'" ng-click="element.inventory = 0" class="icon-remove" style="cursor:pointer;"></i>							
 						</span>
 					</span>
 				</td>

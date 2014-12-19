@@ -610,7 +610,7 @@ class idods(object):
 
         return resdict
 
-    def retrieveInventory(self, serial_no=None, cmpnt_type_name=None, vendor_name=None, name=None):
+    def retrieveInventory(self, serial_no=None, cmpnt_type_name=None, vendor_name=None, name=None, not_installed=None):
         '''
         Retrieve an insertion device from the inventory by the device inventory name and type.
         Wildcard matching is supported for inventory name and device type. ::
@@ -629,6 +629,9 @@ class idods(object):
         :type vendor_name: str
 
         :param name: inventory name
+        :type name: str
+
+        :param name: inventory not_installed
         :type name: str
 
         :return: a map with structure:
@@ -673,25 +676,29 @@ class idods(object):
         resdict = {}
 
         for r in res:
-            resdict[r[0]] = {
-                'id': r[0],
-                'name': r[1],
-                'alias': r[2],
-                'serial_no': r[3],
-                'cmpnt_type_name': r[4],
-                'vendor': r[6],
-                'prop_keys': []
-            }
 
-            # Get the rest of the properties
-            properties = self.retrieveInventoryProperty(r[0])
+            # If not_installed exists it only returns inventories that are not installed
+            if ((not_installed and not len(self.retrieveInventoryToInstall(None, None, r[0]))) or not not_installed) and len(res) != 0:
+                    
+                resdict[r[0]] = {
+                    'id': r[0],
+                    'name': r[1],
+                    'alias': r[2],
+                    'serial_no': r[3],
+                    'cmpnt_type_name': r[4],
+                    'vendor': r[6],
+                    'prop_keys': []
+                }
 
-            # Append properties to existing object
-            for prop in properties:
-                obj = properties[prop]
-                resdict[r[0]][obj['template_name']] = obj['value']
-                resdict[r[0]]['prop_keys'].append(obj['template_name'])
+                # Get the rest of the properties
+                properties = self.retrieveInventoryProperty(r[0])
 
+                # Append properties to existing object
+                for prop in properties:
+                    obj = properties[prop]
+                    resdict[r[0]][obj['template_name']] = obj['value']
+                    resdict[r[0]]['prop_keys'].append(obj['template_name'])
+            
         return resdict
 
     def saveInventory(self, serial_no, cmpnt_type_name, vendor_name=None, name=None, alias=None, props=None):
@@ -2243,7 +2250,7 @@ class idods(object):
             self.logger.info('Error when fetching data method:\n%s (%d)' % (e.args[1], e.args[0]))
             raise MySQLError('Error when fetching data method:\n%s (%d)' % (e.args[1], e.args[0]))
 
-    def retrieveInventoryToInstall(self, inventory_to_install_id, install_name, inventory_id):
+    def retrieveInventoryToInstall(self, inventory_to_install_id=None, install_name=None, inventory_id=None):
         '''
         Return installed devices or specific map
 
